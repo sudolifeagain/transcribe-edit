@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>文字起こし再生ツール</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 0; }
+    .fixed-top {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: #f8f8f8;
+      padding: 15px;
+      z-index: 10;
+      border-bottom: 1px solid #ddd;
+    }
+    .content {
+      padding: 20px; /* 固定された部分の下にスペースを確保 */
+      margin-top: 80px; /* fixed-topの高さ分の余白を追加 */
+    }
+    .segment { margin: 10px 0; }
+    .timestamp { color: blue; cursor: pointer; text-decoration: underline; }
+    textarea { width: 100%; height: 3em; margin-top: 5px; }
+    audio { width: 100%; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<div class="fixed-top">
+  <h2>録音ファイルの再生と文字起こし編集</h2>
+
+  <label>音声ファイル (.mp3 など):</label><br>
+  <input type="file" id="audioInput" accept="audio/*"><br><br>
+
+  <label>書き起こしファイル (transcription.txt):</label><br>
+  <input type="file" id="textInput" accept=".txt"><br><br>
+
+  <audio id="audio" controls></audio><br>
+
+  <button id="downloadButton" style="padding: 10px 20px; cursor: pointer; margin-top: 10px;">編集内容をダウンロード</button>
+</div>
+
+<div class="content">
+  <div id="transcripts"></div>
+</div>
+
+<script>
+const audioInput = document.getElementById('audioInput');
+const textInput = document.getElementById('textInput');
+const audio = document.getElementById('audio');
+const container = document.getElementById('transcripts');
+const downloadButton = document.getElementById('downloadButton');
+let transcriptData = [];
+
+// 音声ファイルを読み込んでプレーヤーにセット
+audioInput.addEventListener('change', event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const audioURL = URL.createObjectURL(file);
+  audio.src = audioURL;
+});
+
+// 書き起こしファイルを読み込んで表示
+textInput.addEventListener('change', event => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const lines = e.target.result.split('\n').filter(Boolean);
+    transcriptData = lines.map(line => {
+      const match = line.match(/^\[(\d+\.\d+)\s*-\s*(\d+\.\d+)\]\s*(.*)$/);
+      if (match) {
+        return {
+          start: parseFloat(match[1]),
+          end: parseFloat(match[2]),
+          text: match[3]
+        };
+      }
+    }).filter(Boolean);
+
+    container.innerHTML = '';
+    transcriptData.forEach((seg, index) => {
+      const div = document.createElement('div');
+      div.className = 'segment';
+
+      const timeLink = document.createElement('span');
+      timeLink.className = 'timestamp';
+      timeLink.textContent = `[${seg.start.toFixed(2)} - ${seg.end.toFixed(2)}]`;
+      timeLink.addEventListener('click', () => {
+        audio.currentTime = seg.start;
+        audio.play().catch(err => {
+          console.error("再生に失敗しました:", err);
+        });
+      });
+
+      const textarea = document.createElement('textarea');
+      textarea.value = seg.text;
+      textarea.addEventListener('input', () => {
+        seg.text = textarea.value; // テキストの変更を反映
+      });
+
+      // タイムスタンプ位置に対応するテキストの位置を保存
+      textarea.dataset.timestampIndex = index;
+
+      div.appendChild(timeLink);
+      div.appendChild(textarea);
+      container.appendChild(div);
+    });
+  };
+  reader.readAsText(file);
+});
+
+// 編集した内容を新しいテキストファイルとしてダウンロード
+downloadButton.addEventListener('click', () => {
+  let text = '';
+  transcriptData.forEach(seg => {
+    if (seg.text.trim() !== '') { // テキストが空でない場合のみ追加
+      text += `[${seg.start.toFixed(2)} - ${seg.end.toFixed(2)}] ${seg.text}\n`;
+    }
+  });
+
+  if (text === '') {
+    alert('ダウンロードする内容がありません。');
+    return;
+  }
+
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'edited_transcription.txt';
+  link.click();
+  URL.revokeObjectURL(url); // リソースを解放
+});
+
+// 音声のシークバーをクリックした時に、対応するテキストボックスにスクロール
+audio.addEventListener('seeked', () => {
+  const currentTime = audio.currentTime;
+  const nearestSegment = transcriptData.reduce((nearest, seg) => {
+    return Math.abs(seg.start - currentTime) < Math.abs(nearest.start - currentTime) ? seg : nearest;
+  });
+
+  const segmentIndex = transcriptData.findIndex(seg => seg.start === nearestSegment.start);
+  const correspondingTextarea = container.querySelectorAll('textarea')[segmentIndex];
+  correspondingTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+// fixed-topの高さを取得してcontentのmargin-topに適用
+window.addEventListener('DOMContentLoaded', () => {
+  const fixedTop = document.querySelector('.fixed-top');
+  const content = document.querySelector('.content');
+  const fixedTopHeight = fixedTop.offsetHeight; // fixed-topの高さを取得
+  content.style.marginTop = `${fixedTopHeight}px`; // contentのmargin-topを設定
+});
+
+</script>
+
+</body>
+</html>
