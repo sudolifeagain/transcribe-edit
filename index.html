@@ -207,6 +207,14 @@ window.addEventListener('DOMContentLoaded', () => {
   content.style.marginTop = `${fixedTopHeight}px`; // contentのmargin-topを設定
 });
 
+// Ctrl + Sで「編集内容をダウンロード」ボタンを押す
+window.addEventListener('keydown', (event) => {
+  if (event.ctrlKey && event.key === 's') {
+    event.preventDefault(); // ブラウザのデフォルトの保存動作を無効化
+    downloadButton.click(); // ダウンロードボタンをクリック
+  }
+});
+
 </script>
 
 </body>
