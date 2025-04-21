@@ -16,12 +16,21 @@
       border-bottom: 1px solid #ddd;
     }
     .content {
-      padding: 20px; /* 固定された部分の下にスペースを確保 */
-      margin-top: 80px; /* fixed-topの高さ分の余白を追加 */
+      padding: 20px;
+      margin-top: 80px;
     }
-    .segment { margin: 10px 0; }
-    .timestamp { color: blue; cursor: pointer; text-decoration: underline; }
-    textarea { width: 100%; height: 3em; margin-top: 5px; }
+    .segment {
+      margin: 10px 0;
+      overflow: visible;
+    }
+    .timestamp { color: blue; cursor: pointer; text-decoration: underline; margin-bottom: 5px; }
+    textarea {
+      width: 100%;
+      height: 3em;
+      margin: 5px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+    }
     audio { width: 100%; margin-top: 10px; }
   </style>
 </head>
@@ -99,6 +108,7 @@ textInput.addEventListener('change', event => {
       textarea.value = seg.text;
       textarea.addEventListener('input', () => {
         seg.text = textarea.value; // テキストの変更を反映
+        textarea.style.borderColor = 'red'; // 編集された場合に枠線の色を変更
       });
 
       // タイムスタンプ位置に対応するテキストの位置を保存
